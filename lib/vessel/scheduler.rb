@@ -12,17 +12,12 @@ module Vessel
 
     def initialize(queue, settings)
       @queue = queue
-      @min_threads, @max_threads, @delay, @headers =
-        settings.values_at(:min_threads, :max_threads, :delay, :headers)
+      @min_threads, @max_threads, @delay, @headers, @intercept =
+        settings.values_at(:min_threads, :max_threads, :delay, :headers, :intercept)
 
       options = settings[:ferrum]
       options.merge!(timeout: settings[:timeout]) if settings[:timeout]
       @browser = Ferrum::Browser.new(**options)
-
-      if settings[:intercept]
-        @browser.network.intercept
-        @browser.on(:request, &settings[:intercept])
-      end
     end
 
     def post(*requests)
@@ -54,6 +49,11 @@ module Vessel
 
       page = browser.create_page
       page.headers.set(headers) if headers
+      if @intercept
+        page.network.intercept
+        page.on(:request, &@intercept)
+      end
+
       # Delay is set between requests when we don't want to bombard server with
       # requests so it requires crawler to be single threaded. Otherwise doesn't
       # make sense.
